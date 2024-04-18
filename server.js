@@ -11,16 +11,17 @@ app.use(express.json());
 const MODEL_NAME = "gemini-pro";
 const API_KEY = process.env.API_KEY;
 
-async function runChat() {
-  const genAI = new GoogleGenerativeAI(API_KEY);
-  const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+async function runChat(userInput) {
+  try {
+    const genAI = new GoogleGenerativeAI(API_KEY);
+    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
 
-  const generationConfig = {
-    temperature: 1,
-    topK: 1,
-    topP: 1,
-    maxOutputTokens: 2048,
-  };
+    const generationConfig = {
+      temperature: 1,
+      topK: 1,
+      topP: 1,
+      maxOutputTokens: 2048,
+    };
 
   const safetySettings = [
     {
@@ -115,6 +116,10 @@ async function runChat() {
   const result = await chat.sendMessage(userInput);
   const response = result.response;
   return response.text();
+} catch (error) {
+  console.error('Error during chat message generation:', error);
+  return 'Oops! Something went wrong. Please try again later.';
+}
 }
 
 
