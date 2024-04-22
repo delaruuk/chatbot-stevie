@@ -27,17 +27,6 @@
       overflow: hidden; /* Ensure contents don't overflow */
     }
 
-    #chat-header {
-      background-color: #4c63af;
-      color: #fff;
-      font-size: 24px;
-      font-weight: bold;
-      text-align: center;
-      padding: 20px 0 10px; /* Adjust padding */
-      border-top-left-radius: 12px;
-      border-top-right-radius: 12px;
-    }
-
     #chat-title {
       background-color: #4c63af;
       color: #fff;
@@ -119,7 +108,7 @@
       position: absolute;
       top: 5px;
       right: 5px;
-      background-color: #ccc;
+      background-color: #7c7676;
       color: #fff;
       border: none;
       border-radius: 50%;
@@ -131,13 +120,58 @@
       justify-content: center;
       align-items: center;
     }
+
+    #chat-toggle-container {
+      display: flex;
+      align-items: flex-start; /* Align items at the start */
+    }
+    
+    #chat-toggle {
+      background-color: #4c63af;
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    
+    #chat-toggle-title {
+      margin-left: 10px;
+      font-size: 15px;
+      color: #333;
+      align-self: flex-start; /* Align title at the start */
+    }
+
+    #chat-toggle-container {
+      display: flex;
+      align-items: flex-start; /* Adjust alignment */
+    }
+    
+    #chat-toggle {
+      background-color: #4c63af;
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 150px; /* Adjust width as needed */
+      height: 50px;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-self: center; /* Adjust alignment */
+    }
+    
   </style>
 </head>
-<body>
-  <button id="chat-toggle" title="Technical Support">&#x1F4AC;</button>
+
+<body> 
+  <div id="chat-toggle-container">
+    <button id="chat-toggle" aria-label="Toggle Chat">&#x1F4AC; Technical Support?</button>
+  </div>
   <div id="chat-container">
     <button id="minimize-chat" title="Minimize">&#x2013;</button>
-    <div id="chat-header">Chat</div>
     <div id="chat-title">Technical Support</div>
     <div id="chat-history"></div>
     <form id="chat-form">
