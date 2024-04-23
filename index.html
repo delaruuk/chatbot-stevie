@@ -180,7 +180,7 @@
       
       const userBubble = `<div class="message user-message">${userMessage}</div>`;
       chatHistory.insertAdjacentHTML('beforeend', userBubble);
-
+    
       try {
         const response = await fetch('/chat', {
           method: 'POST',
@@ -189,15 +189,21 @@
           },
           body: JSON.stringify({ userInput: userMessage }),
         });
-
+    
         const data = await response.json();
         const botMessage = `<div class="message bot-message">${data.response}</div>`;
         chatHistory.insertAdjacentHTML('beforeend', botMessage);
+        
+        // Dynamically adjust width of message bubbles
+        document.querySelectorAll('.message').forEach(message => {
+          const width = message.textContent.length * 8 + 30; // Adjust multiplier as needed
+          message.style.width = `${width}px`;
+        });
       } catch (error) {
         console.error('Error:', error);
         // Handle errors gracefully, e.g., display an error message to the user
       }
-
+    
       // Scroll to the bottom of the chat history
       chatHistory.scrollTop = chatHistory.scrollHeight;
     }
