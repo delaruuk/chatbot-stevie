@@ -138,6 +138,14 @@
       justify-content: center;
       align-items: center;
     }
+
+    #loader {
+      display: none; /* Initially hide the loader */
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
     
     
   </style>
@@ -151,6 +159,7 @@
     <button id="minimize-chat" title="Minimize">&#x2013;</button>
     <div id="chat-title">Technical Support</div>
     <div id="chat-history"></div>
+    <div id="loader"><img src="loader.gif" width="50px" alt="Loading..."></div>
     <form id="chat-form">
       <input type="text" id="user-input" placeholder="Enter your message">
       <button type="submit">Send</button>
@@ -177,7 +186,9 @@
     async function sendMessage() {
       const userMessage = userInput.value.trim();
       userInput.value = ''; // Clear input field
-      
+      const loader = document.getElementById('loader');
+      loader.style.display = 'block';
+
       if (!userMessage) return; // Don't send empty messages
       
       const userBubble = `<div class="message user-message">${userMessage}</div>`;
@@ -206,6 +217,7 @@
         // Handle errors gracefully, e.g., display an error message to the user
       }
     
+      loader.style.display = 'none';
       // Scroll to the bottom of the chat history
       chatHistory.scrollTop = chatHistory.scrollHeight;
     }
