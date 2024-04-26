@@ -18,7 +18,7 @@
     
     #chat-toggle {
       background-color: #4c63af;
-      color: #fff;
+      color: #ffffff;
       border: none;
       border-radius: 25px;
       padding: 10px 20px;
@@ -39,7 +39,7 @@
     
     #chat-container {
       display: none;
-      background-color: #fff;
+      background-color: #ffffff;
       border-radius: 12px;
       box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.1);
       width: 400px;
@@ -63,7 +63,7 @@
     
     #chat-title {
       background-color: #4c63af;
-      color: #fff;
+      color: #ffffff;
       font-size: 16px;
       padding: 10px;
       border-top-left-radius: 12px;
@@ -78,24 +78,32 @@
       padding: 10px;
     }
     
+    .message-container {
+      display: flex;
+      justify-content: flex-end; /* Align user messages to the right */
+    }
+
+    .bot-message-container {
+      justify-content: flex-start; /* Align bot messages to the left */
+    }
+
     .message {
-      display: inline-block; /* Adjust display property */
+      display: inline-block;
       padding: 10px 15px;
       border-radius: 20px;
       margin: 5px;
-      max-width: 70%; /* Limit width to 70% of the container */
-      word-wrap: break-word; /* Allow long words to break into multiple lines */
+      max-width: 70%;
+      word-wrap: break-word;
     }
     
     .user-message {
-      background-color: #4c63af;
-      color: #fff;
-      align-self: flex-end;
+      background-color: #188dc4;
+      color: #ffffff;
     }
     
     .bot-message {
-      background-color: #e0ebf0;
-      color: #000;
+      background-color: #4c63af;
+      color: #ffffff;
     }
     
     form {
@@ -114,7 +122,7 @@
     
     button {
       background-color: #4c63af;
-      color: #fff;
+      color: #ffffff;
       border: none;
       border-radius: 20px;
       padding: 10px 20px;
@@ -126,8 +134,8 @@
       position: absolute;
       top: 5px;
       right: 5px;
-      background-color: #ccc;
-      color: #fff;
+      background-color: #c7c7c7;
+      color: #ffffff;
       border: none;
       border-radius: 50%;
       width: 25px;
@@ -153,8 +161,7 @@
 
 <body> 
   <div id="chat-toggle-container">
-    <button id="chat-toggle" aria-label="Toggle Chat">&#x1F4AC; Technical Support?</button>
-  </div>
+    <button id="chat-toggle" aria-label="Toggle Chat">&#x1F4AC; Technical Support?</button></div>
   <div id="chat-container">
     <button id="minimize-chat" title="Minimize">&#x2013;</button>
     <div id="chat-title">Technical Support</div>
@@ -191,9 +198,9 @@
 
       if (!userMessage) return; // Don't send empty messages
       
-      const userBubble = `<div class="message user-message">${userMessage}</div>`;
+      const userBubble = `<div class="message-container"><div class="message user-message">${userMessage}</div></div>`;
       chatHistory.insertAdjacentHTML('beforeend', userBubble);
-    
+
       try {
         const response = await fetch('/chat', {
           method: 'POST',
@@ -202,21 +209,15 @@
           },
           body: JSON.stringify({ userInput: userMessage }),
         });
-    
+
         const data = await response.json();
-        const botMessage = `<div class="message bot-message">${data.response}</div>`;
-        chatHistory.insertAdjacentHTML('beforeend', botMessage);
-        
-        // Dynamically adjust width of message bubbles
-        document.querySelectorAll('.message').forEach(message => {
-          const width = message.textContent.length * 8 + 30; // Adjust multiplier as needed
-          message.style.width = `${width}px`;
-        });
+        const botBubble = `<div class="message-container bot-message-container"><div class="message bot-message">${data.response}</div></div>`;
+        chatHistory.insertAdjacentHTML('beforeend', botBubble);
       } catch (error) {
         console.error('Error:', error);
         // Handle errors gracefully, e.g., display an error message to the user
       }
-    
+
       loader.style.display = 'none';
       // Scroll to the bottom of the chat history
       chatHistory.scrollTop = chatHistory.scrollHeight;
