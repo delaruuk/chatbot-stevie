@@ -37,4 +37,17 @@ async function getUserHistory(user, limit = 10) {
     .slice(0, limit);
 }
 
-module.exports = { saveMessage, getUserHistory };
+function searchMessages(query, limit = 10) {
+  const q = (query || "").toLowerCase();
+  if (!q) return [];
+  const data = loadData();
+  const results = [];
+  for (const m of data) {
+    const hay = `${m.role}\n${m.message}`.toLowerCase();
+    if (hay.includes(q)) results.push(m);
+  }
+  results.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  return results.slice(0, limit);
+}
+
+module.exports = { saveMessage, getUserHistory, searchMessages };

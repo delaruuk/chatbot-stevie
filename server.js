@@ -7,7 +7,8 @@ const compression = require("compression");
 const rateLimit = require("express-rate-limit");
 const morgan = require("morgan");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const { saveMessage, getUserHistory } = require("./db");
+const { saveMessage, getUserHistory, searchMessages } = require("./db");
+const { retrieveRelevantGuides } = require("./knowledge");
 
 const app = express();
 
@@ -48,6 +49,14 @@ app.post("/chat", async (req, res) => {
     // Server-side history for continuity (recent 5)
     const recent = await getUserHistory(userId, 5);
 
+    // Retrieve relevant local guides and similar past messages
+    const guideSnippets = retrieveRelevantGuides(userInput, 4)
+      .map(g => `Source: ${g.source}\n${g.content}`)
+      .join("\n\n");
+    const similarMessages = searchMessages(userInput, 5)
+      .map(m => `${m.role.toUpperCase()}: ${m.message}`)
+      .join("\n");
+
     // Combine client-provided short history (optional) with server history
     const combined = [];
     if (Array.isArray(clientHistory)) {
@@ -65,7 +74,17 @@ app.post("/chat", async (req, res) => {
       .map(m => `${m.role.toUpperCase()}: ${m.message}`)
       .join("\n");
 
-    const prompt = `${context}${context ? "\n" : ""}USER: ${userInput}\nASSISTANT:`;
+    const knowledgeBlock = [
+      guideSnippets ? `GUIDES:\n${guideSnippets}` : "",
+      similarMessages ? `SIMILAR CONVERSATIONS:\n${similarMessages}` : "",
+    ].filter(Boolean).join("\n\n");
+
+    const prompt = [
+      knowledgeBlock,
+      context,
+      `USER: ${userInput}`,
+      "ASSISTANT:",
+    ].filter(Boolean).join("\n\n");
 
     // Call Gemini
     const result = await model.generateContent(prompt);
