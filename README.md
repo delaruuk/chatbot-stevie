@@ -1,7 +1,9 @@
 1. npm install
-2. create .env file and add your API key as:
-   API_KEY="Paste API Key here"
-3. run this command in terminal in the folder: node server.js
+2. Create a `.env` file with:
+   API_KEY="your Google Generative AI key"
+   PORT=3000
+   NODE_ENV=development
+3. Start the server: `npm start`
 
 # Setup
 
@@ -9,8 +11,7 @@
 - Install deps:
   npm install
 - Create .env (see example below).
-- Start server:
-  npm start
+- Start server: `npm start`
 
 # Environment variables
 
@@ -26,6 +27,6 @@
 
 # Security/Performance
 
-- helmet, compression, rate limiting, and JSON size limits are enabled.
+- helmet, compression, rate limiting, logging, and JSON size limits are enabled.
 - Frontend output is sanitized to mitigate XSS.
 - History is capped to recent turns.
