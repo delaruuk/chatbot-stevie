@@ -1,117 +1,113 @@
-require('dotenv').config();
-const express = require('express');
-const path = require('path');
-const helmet = require('helmet');
-const compression = require('compression');
-const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
-const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require('@google/generative-ai');
+// server.js
+require("dotenv").config();
+const express = require("express");
+const path = require("path");
+const helmet = require("helmet");
+const compression = require("compression");
+const rateLimit = require("express-rate-limit");
+const morgan = require("morgan");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { saveMessage, getUserHistory, searchMessages } = require("./db");
+const { retrieveRelevantGuides } = require("./knowledge");
 
 const app = express();
-const port = process.env.PORT || 3000;
+
+// --- Middleware ---
 app.use(helmet());
 app.use(compression());
-app.use(morgan('tiny'));
-app.use(express.json({ limit: '2kb' }));
-
-const chatLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 30,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-const MODEL_NAME = "gemini-pro";
-const API_KEY = process.env.API_KEY;
-const TEMPERATURE = Number(process.env.TEMPERATURE || 0.9);
-const MAX_OUTPUT_TOKENS = Number(process.env.MAX_OUTPUT_TOKENS || 1024);
-
-if (!API_KEY) {
-  console.error('Missing API_KEY in environment. Please set API_KEY in your .env file.');
-  process.exit(1);
-}
-
-async function runChat(userInput, priorHistory) {
-  try {
-    const genAI = new GoogleGenerativeAI(API_KEY);
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-
-    const generationConfig = {
-      temperature: TEMPERATURE,
-      topK: 1,
-      topP: 1,
-      maxOutputTokens: MAX_OUTPUT_TOKENS,
-    };
-
-    const safetySettings = [
-      {
-        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-      },
-    ];
-
-    const initialInstruction = [
-      {
-        role: 'user',
-        parts: ["You are Stevie, Procom's Smart Home Tech Support Assistant. Ask for the user's name, confirm details, troubleshoot Procom-installed devices (Wi‑Fi, device settings, provider/Wi‑Fi changes, A/V, Z‑Wave, security cameras). When needed, offer escalation: support page (https://www.usprocom.com/support/) or phone (847‑545‑0101). Ask clarifying questions, keep steps clear and concise."]
-      },
-      {
-        role: 'model',
-        parts: ["Hello there, my name is Stevie. I'm Procom's Smart Home Tech Support Assistant. May I please have your name?"]
-      },
-    ];
-
-    const mappedHistory = Array.isArray(priorHistory)
-      ? priorHistory.slice(-10).map((m) => ({ role: m.role, parts: [String(m.content || '')] }))
-      : [];
-
-    const chat = model.startChat({
-      generationConfig,
-      safetySettings,
-      history: [...initialInstruction, ...mappedHistory],
-    });
-
-    const result = await chat.sendMessage(userInput);
-    const response = result.response;
-    return response.text();
-  } catch (error) {
-    console.error('Error during chat message generation:', error);
-    return 'Oops! Incorrect input, try again.';
-  }
-}
-
+app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
+const limiter = rateLimit({ windowMs: 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false });
+app.use(limiter);
+app.use(express.json({ limit: "100kb" }));
+app.use(express.urlencoded({ extended: true, limit: "100kb" }));
 app.use(express.static(path.join(__dirname)));
 
-app.post('/chat', chatLimiter, async (req, res) => {
+// --- Gemini setup ---
+const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+if (!apiKey) {
+  // Fail fast with a clear message in logs
+  console.warn("Missing API_KEY (or GEMINI_API_KEY). Requests to /chat will fail.");
+}
+const genAI = new GoogleGenerativeAI(apiKey);
+const model = genAI.getGenerativeModel({ model: "gemini-pro" }); // or "gemini-1.5-flash"
+
+// --- Routes ---
+// Handle sending a chat message (aligns with frontend contract)
+app.post("/chat", async (req, res) => {
+  const { userInput, history: clientHistory } = req.body || {};
+
+  if (!userInput || typeof userInput !== "string") {
+    return res.status(400).json({ error: "Missing 'userInput' string in body." });
+  }
+
+  const userId = req.ip || "anonymous";
+
   try {
-    const userInputRaw = req.body?.userInput;
-    const history = req.body?.history || [];
-    if (typeof userInputRaw !== 'string') {
-      return res.status(400).json({ error: 'Invalid request body' });
+    // Persist user message
+    await saveMessage(userId, userInput, "user");
+
+    // Server-side history for continuity (recent 5)
+    const recent = await getUserHistory(userId, 5);
+
+    // Retrieve relevant local guides and similar past messages
+    const guideSnippets = retrieveRelevantGuides(userInput, 4)
+      .map(g => `Source: ${g.source}\n${g.content}`)
+      .join("\n\n");
+    const similarMessages = searchMessages(userInput, 5)
+      .map(m => `${m.role.toUpperCase()}: ${m.message}`)
+      .join("\n");
+
+    // Combine client-provided short history (optional) with server history
+    const combined = [];
+    if (Array.isArray(clientHistory)) {
+      for (const turn of clientHistory) {
+        if (turn && typeof turn.content === "string" && typeof turn.role === "string") {
+          combined.push({ role: turn.role, message: turn.content });
+        }
+      }
+    }
+    for (const m of recent) {
+      combined.push({ role: m.role, message: m.message });
     }
 
-    const userInput = userInputRaw.trim().slice(0, 1000);
+    const context = combined
+      .map(m => `${m.role.toUpperCase()}: ${m.message}`)
+      .join("\n");
 
-    const response = await runChat(userInput, history);
-    res.json({ response });
-  } catch (error) {
-    console.error('Error in chat endpoint:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    const knowledgeBlock = [
+      guideSnippets ? `GUIDES:\n${guideSnippets}` : "",
+      similarMessages ? `SIMILAR CONVERSATIONS:\n${similarMessages}` : "",
+    ].filter(Boolean).join("\n\n");
+
+    const prompt = [
+      knowledgeBlock,
+      context,
+      `USER: ${userInput}`,
+      "ASSISTANT:",
+    ].filter(Boolean).join("\n\n");
+
+    // Call Gemini
+    const result = await model.generateContent(prompt);
+    const reply = result.response.text();
+
+    // Persist assistant reply
+    await saveMessage(userId, reply, "assistant");
+
+    res.json({ response: reply });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Something went wrong." });
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server listening on port ${port}`);
+// Get user chat history
+app.get("/history/:user", async (req, res) => {
+  const history = await getUserHistory(req.params.user, 20);
+  res.json(history);
+});
+
+// --- Start server ---
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`✅ Server running on http://localhost:${PORT}`);
 });
