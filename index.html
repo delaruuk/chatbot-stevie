@@ -196,19 +196,19 @@
       const sendBtn = document.getElementById("send-btn");
       const loader = document.getElementById("loader");
 
-      const history = [];
+      const chatTurns = [];
       let isLoading = false;
 
       function openChat() {
         chatContainer.hidden = false;
         chatToggle.setAttribute("aria-expanded", "true");
         setTimeout(() => userInput.focus(), 0);
-        if (history.length === 0) {
+        if (chatTurns.length === 0) {
           appendMessage(
             "👋 Hi there! I'm Stevie, your smart home assistant at Procom. What can I help you with today?",
             true
           );
-          history.push({
+          chatTurns.push({
             role: "model",
             content:
               "Hi there! I'm Stevie, your smart home assistant at Procom. What can I help you with today?",
@@ -265,7 +265,10 @@
           const resp = await fetch("/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userInput: userMessage, history }),
+            body: JSON.stringify({
+              userInput: userMessage,
+              history: chatTurns,
+            }),
           });
 
           if (!resp.ok) {
@@ -277,9 +280,10 @@
             const data = await resp.json();
             if (data && typeof data.response === "string") {
               appendMessage(data.response, true);
-              history.push({ role: "user", content: userMessage });
-              history.push({ role: "model", content: data.response });
-              if (history.length > 20) history.splice(0, history.length - 20);
+              chatTurns.push({ role: "user", content: userMessage });
+              chatTurns.push({ role: "model", content: data.response });
+              if (chatTurns.length > 20)
+                chatTurns.splice(0, chatTurns.length - 20);
             } else {
               appendMessage("⚠️ Unexpected response format.", true);
             }
